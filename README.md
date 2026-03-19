@@ -1,2 +1,2 @@
 # EEG-RepLearn
-MAE, DAE, Diffusion
+masked autoencoder, denoising autoencoder, diffusion

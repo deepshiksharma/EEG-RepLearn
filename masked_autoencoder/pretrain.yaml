@@ -1,0 +1,33 @@
+data:
+  train_csv: "./../pretrain/metadata.csv"
+  val_csv: "./../pt_val/metadata.csv"
+  num_channels: 16
+  T: 2000
+  batch_size: 512
+  num_workers: 32
+
+training:
+  epochs: 100
+  output_dir: "./runs/pretrain_0"
+
+optimizer:
+  lr: 1e-4
+  weight_decay: 0.05
+  betas: [0.9, 0.95]
+
+scheduler:
+  name: cosine
+  eta_min: 1e-6
+
+model:
+  patch_size: 25
+  embed_dim: 192
+  encoder_depth: 6
+  decoder_dim: 64
+  decoder_depth: 4
+  nhead: 4
+  ff_dim: 256
+  mask_ratio: 0.6
+  conv_stem_channels: [32, 64, 64]
+  conv_decoder_hidden: 64
+  dropout: 0.0
