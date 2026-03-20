@@ -5,8 +5,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from model import EEG_MaskedAutoencoder
-from dataset import EEG_NPY_Dataset
-import matplotlib.pyplot as plt
+from dataset import TUHEEG_NPY_Dataset
+from utils import save_plots
 
 
 # configuration
@@ -24,22 +24,24 @@ training_config = config['training']
 device = torch.device('cuda')
 use_amp = device.type == 'cuda'
 amp_dtype = torch.bfloat16
-print(device)
+print(device, end='\n\n')
 
 
 # datasets
-train_ds = EEG_NPY_Dataset(
+train_ds = TUHEEG_NPY_Dataset(
     csv_path=data_config['train_csv'],
     num_channels=data_config['num_channels'],
     T=data_config['T'],
     supervised=False,
+    normalize=True
 )
 
-val_ds = EEG_NPY_Dataset(
+val_ds = TUHEEG_NPY_Dataset(
     csv_path=data_config['val_csv'],
     num_channels=data_config['num_channels'],
     T=data_config['T'],
     supervised=False,
+    normalize=True
 )
 
 # dataloaders
@@ -81,16 +83,16 @@ model = EEG_MaskedAutoencoder(
 # optimizer
 optimizer = optim.AdamW(
     model.parameters(),
-    lr=optimizer_config['lr'],
-    betas=tuple(optimizer_config['betas']),
-    weight_decay=optimizer_config['weight_decay'],
+    lr=float(optimizer_config['lr']),
+    betas=tuple(float(x) for x in optimizer_config['betas']),
+    weight_decay=float(optimizer_config['weight_decay'])
 )
 
 # scheduler
 scheduler = optim.lr_scheduler.CosineAnnealingLR(
     optimizer,
     T_max=training_config['epochs'],
-    eta_min=scheduler_config['eta_min'],
+    eta_min=float(scheduler_config['eta_min'])
 )
 
 # loss
@@ -98,34 +100,15 @@ criterion = nn.MSELoss()
 
 
 # output
-out_dir = training_config['output_dir']
+out_dir = os.path.join('./runs/pretrain', training_config['output_dir'])
 os.makedirs(out_dir, exist_ok=True)
+# save the configuration file used in this run
+with open(os.path.join(out_dir, 'config.yaml'), 'w') as f:
+    yaml.dump(config, f)
 
-best_val = float('inf')
-train_hist, val_hist, lr_hist = [], [], []
 
-
-# plots
-def save_plots():
-    # loss curve
-    plt.figure()
-    plt.plot(train_hist, label='train')
-    plt.plot(val_hist, label='val')
-    plt.legend()
-    plt.xlabel('epoch')
-    plt.ylabel('loss')
-    plt.grid()
-    plt.savefig(os.path.join(out_dir, 'loss.png'))
-    plt.close()
-
-    # lr curve
-    plt.figure()
-    plt.plot(lr_hist)
-    plt.xlabel('step')
-    plt.ylabel('lr')
-    plt.grid()
-    plt.savefig(os.path.join(out_dir, 'lr.png'))
-    plt.close()
+lowest_val_loss = float('inf')
+train_losses, val_losses, lr_values = list(), list(), list()
 
 
 # training loop
@@ -151,12 +134,11 @@ for epoch in range(1, epochs + 1):
         optimizer.step()
 
         running_loss += loss.item()
-        lr_hist.append(optimizer.param_groups[0]['lr'])
 
         pbar.set_postfix(loss=f'{loss.item():.4f}')
 
     train_loss = running_loss / len(train_loader)
-    train_hist.append(train_loss)
+    train_losses.append(train_loss)
 
     # val
     model.eval()
@@ -173,19 +155,20 @@ for epoch in range(1, epochs + 1):
             val_loss += loss.item()
 
     val_loss /= len(val_loader)
-    val_hist.append(val_loss)
+    val_losses.append(val_loss)
 
     scheduler.step()
+    lr_values.append(optimizer.param_groups[0]['lr'])
 
     print(f'Epoch {epoch}: train={train_loss:.6f} val={val_loss:.6f}')
 
     # checkpointing
-    last_path = os.path.join(out_dir, 'last_model.pth')
+    last_path = os.path.join(out_dir, 'last_trained_epoch.pth')
     torch.save(model.state_dict(), last_path)
 
-    if val_loss < best_val:
-        best_val = val_loss
-        best_path = os.path.join(out_dir, 'best_model.pth')
-        torch.save(model.state_dict(), best_path)
+    if val_loss < lowest_val_loss:
+        lowest_val_loss = val_loss
+        lowest_val_path = os.path.join(out_dir, f'lowest_val_loss_epoch_{epoch}.pth')
+        torch.save(model.state_dict(), lowest_val_path)
 
-    save_plots()
+    save_plots(out_dir, train_losses, val_losses, lr_values)

@@ -1,14 +1,14 @@
 data:
-  train_csv: "./../pretrain/metadata.csv"
-  val_csv: "./../pt_val/metadata.csv"
+  train_csv: ""
+  val_csv: ""
   num_channels: 16
   T: 2000
   batch_size: 512
-  num_workers: 32
+  num_workers: 16
 
 training:
-  epochs: 100
-  output_dir: "./runs/pretrain_0"
+  epochs: 3
+  output_dir: "0"
 
 optimizer:
   lr: 1e-4

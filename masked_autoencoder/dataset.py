@@ -3,9 +3,10 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
+from normalization import staged_mu_law
 
 
-class EEG_NPY_Dataset(Dataset):
+class TUHEEG_NPY_Dataset(Dataset):
     """
     Args:
         - csv_path (str): path to CSV having columns ['filepath', 'age', 'gender']
@@ -15,7 +16,7 @@ class EEG_NPY_Dataset(Dataset):
         - supervised (bool): if supervised, return (tensor, age, gender); else return only tensor
     """
     
-    def __init__(self, csv_path, num_channels=16, T=2000, dtype=torch.float32, supervised=False):
+    def __init__(self, csv_path, num_channels=16, T=2000, dtype=torch.float32, supervised=False, normalize=True):
         assert os.path.isfile(csv_path), f'CSV not found: {csv_path}'
 
         self.df = pd.read_csv(csv_path)
@@ -23,10 +24,11 @@ class EEG_NPY_Dataset(Dataset):
         expected = {'filepath', 'age', 'gender'}
         assert expected.issubset(set(self.df.columns)), f'CSV must contain columns: {expected}'
 
-        self.num_channels = int(num_channels)
-        self.T = int(T)
+        self.num_channels = num_channels
+        self.T = T
         self.dtype = dtype
-        self.supervised = bool(supervised)
+        self.supervised = supervised
+        self.normalize = normalize
 
         # gender mapping (only used when supervised=True)
         self._gender_map = {'male': 0, 'female': 1}
@@ -62,7 +64,10 @@ class EEG_NPY_Dataset(Dataset):
             raise ValueError(
                 f'Expected T={self.T}, found {arr.shape[1]} at {path}'
             )
-
+        
+        if self.normalize:
+            arr = staged_mu_law(arr, scale=1e4)
+        
         tensor = torch.from_numpy(arr).to(dtype=self.dtype)
 
         # self-supervised
