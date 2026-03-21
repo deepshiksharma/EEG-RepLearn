@@ -1,0 +1,4 @@
+v0.1    masked_autoencoder
+    - Does not enforce meaningful compression. The compression performed is tokenization, not progressive downsampling.
+    - The encoder does not have sufficient receptive field. The conv stem is too weak. The model relies heavily on the transformer and attention, instead of hierarchical structure.
+    - The decoder is too capable relative to encoder constraint (the decoder leans towards compensating, instead of refining).
