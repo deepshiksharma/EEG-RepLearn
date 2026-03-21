@@ -1,2 +1,2 @@
 # EEG-RepLearn
-masked autoencoder, denoising autoencoder, diffusion
+masked autoencoder, masked+denoising autoencoder, and then diffusion
