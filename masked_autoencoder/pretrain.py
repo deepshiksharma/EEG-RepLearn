@@ -52,6 +52,7 @@ def main():
         batch_size=data_config['batch_size'],
         shuffle=True,
         num_workers=data_config['num_workers'],
+        persistent_workers=True,
         pin_memory=True,
         drop_last=True,
     )
@@ -61,6 +62,7 @@ def main():
         batch_size=data_config['batch_size'],
         shuffle=False,
         num_workers=data_config['num_workers'],
+        persistent_workers=True,
         pin_memory=True,
     )
 
@@ -137,8 +139,6 @@ def main():
 
             running_loss += loss.item()
 
-            pbar.set_postfix(loss=f'{loss.item():.4f}')
-
         train_loss = running_loss / len(train_loader)
         train_losses.append(train_loss)
 
@@ -147,19 +147,16 @@ def main():
         model.eval()
         train_debug_loss = 0.0
 
-        pbar = tqdm(train_loader, desc=f'train_debug epoch {epoch}/{epochs}', ncols=100)
-        for waves in pbar:
-            waves = waves.to(device, non_blocking=True)
+        with torch.no_grad():
+            pbar = tqdm(train_loader, desc=f'train_debug epoch {epoch}/{epochs}', ncols=100)
+            for waves in pbar:
+                waves = waves.to(device, non_blocking=True)
 
-            with torch.no_grad():
-                for waves in train_loader:
-                    waves = waves.to(device, non_blocking=True)
+                with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
+                    decoded, target, _ = model(waves)
+                    loss = criterion(decoded, target)
 
-                    with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
-                        decoded, target, _ = model(waves)
-                        loss = criterion(decoded, target)
-
-                    train_debug_loss += loss.item()
+                train_debug_loss += loss.item()
 
         train_debug_loss /= len(train_loader)
         train_debug_losses.append(train_debug_loss)
@@ -168,19 +165,16 @@ def main():
         model.eval()
         val_loss = 0.0
 
-        pbar = tqdm(val_loader, desc=f'val epoch {epoch}/{epochs}', ncols=100)
-        for waves in pbar:
-            waves = waves.to(device, non_blocking=True)
+        with torch.no_grad():
+            pbar = tqdm(val_loader, desc=f'val epoch {epoch}/{epochs}', ncols=100)
+            for waves in pbar:
+                waves = waves.to(device, non_blocking=True)
 
-            with torch.no_grad():
-                for waves in val_loader:
-                    waves = waves.to(device, non_blocking=True)
+                with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
+                    decoded, target, _ = model(waves)
+                    loss = criterion(decoded, target)
 
-                    with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
-                        decoded, target, _ = model(waves)
-                        loss = criterion(decoded, target)
-
-                    val_loss += loss.item()
+                val_loss += loss.item()
 
         val_loss /= len(val_loader)
         val_losses.append(val_loss)
@@ -188,7 +182,7 @@ def main():
         scheduler.step()
         lr_values.append(optimizer.param_groups[0]['lr'])
 
-        print(f'Epoch {epoch}: train={train_loss:.6f} val={val_loss:.6f}')
+        print(f'Epoch {epoch}: train={train_loss:.6f} train_debug={train_debug_loss:.6f} val={val_loss:.6f}')
 
         # checkpointing
         last_path = os.path.join(out_dir, 'last_trained_epoch.pth')
@@ -196,8 +190,9 @@ def main():
 
         if val_loss < lowest_val_loss:
             lowest_val_loss = val_loss
-            lowest_val_path = os.path.join(out_dir, f'lowest_val_loss_epoch_{epoch}.pth')
+            lowest_val_path = os.path.join(out_dir, f'lowest_val_loss.pth')
             torch.save(model.state_dict(), lowest_val_path)
+            print(f'saved weights of the lowest val loss model from epoch {epoch}')
 
         save_plots(out_dir, train_losses, train_debug_losses, val_losses, lr_values)
 
