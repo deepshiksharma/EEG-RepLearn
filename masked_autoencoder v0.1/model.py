@@ -104,7 +104,7 @@ class ConvDecoderWaveform(nn.Module):
 
 
 class EEG_MaskedAutoencoder(nn.Module):
-    def __init__(self, num_channels=16, T=2000, patch_size=25, mask_ratio=0.7, embed_dim=128,
+    def __init__(self, num_channels=16, T=2000, patch_size=25, mask_ratio=0.6, embed_dim=128,
                  encoder_depth=6, decoder_depth=4, decoder_dim=64, nhead=6, ff_dim=768,
                  conv_stem_channels=(32, 64, 64), conv_decoder_hidden=64, dropout=0.0):
         super().__init__()
