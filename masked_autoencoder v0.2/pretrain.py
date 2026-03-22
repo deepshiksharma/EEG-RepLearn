@@ -7,7 +7,7 @@ import torch.multiprocessing as mp
 from torch.utils.data import DataLoader
 from model import EEG_MaskedAutoencoder
 from dataset import TUHEEG_NPY_Dataset
-from utils import save_plots
+from utils import save_plots_and_loss_arrays
 
 
 def main():
@@ -71,15 +71,11 @@ def main():
     model = EEG_MaskedAutoencoder(
         num_channels=data_config['num_channels'],
         T=data_config['T'],
-        patch_size=model_config['patch_size'],
         mask_ratio=model_config['mask_ratio'],
         embed_dim=model_config['embed_dim'],
-        encoder_depth=model_config['encoder_depth'],
-        decoder_depth=model_config['decoder_depth'],
-        decoder_dim=model_config['decoder_dim'],
+        transformer_depth=model_config['transformer_depth'],
         nhead=model_config['nhead'],
         ff_dim=model_config['ff_dim'],
-        conv_stem_channels=tuple(model_config['conv_stem_channels']),
         conv_decoder_hidden=model_config['conv_decoder_hidden'],
         dropout=model_config['dropout'],
     ).to(device)
@@ -194,7 +190,8 @@ def main():
             torch.save(model.state_dict(), lowest_val_path)
             print(f'saved weights of the lowest val loss model from epoch {epoch}')
 
-        save_plots(out_dir, train_losses, train_debug_losses, val_losses, lr_values)
+        save_plots_and_loss_arrays(out_dir, train_losses, train_debug_losses,
+                                   val_losses, lr_values, plot_train_debug_loss=True)
 
 
 if __name__ == "__main__":
