@@ -1,0 +1,30 @@
+data:
+  train_csv: "/media/govtech/Disk 1/EEG_representation_learning/TUH-EEG-8S/train/metadata.csv"
+  val_csv: "/media/govtech/Disk 1/EEG_representation_learning/TUH-EEG-8S/val/metadata.csv"
+  test_csv: "/media/govtech/Disk 1/EEG_representation_learning/TUH-EEG-8S/test/metadata.csv"
+  num_channels: 16
+  T: 2000
+  batch_size: 2048
+  num_workers: 16
+
+training:
+  epochs: 10
+  output_dir: "0_10-epochs_age"
+
+optimizer:
+  lr: 1e-4
+  betas: [0.9, 0.95]
+  weight_decay: 0.05
+
+scheduler:
+  name: cosine
+  eta_min: 1e-6
+
+model:
+  pretrained_encoder: False
+  pretrained_model_path: ".../lowest_val_loss.pth"
+  embed_dim: 128
+  transformer_depth: 2
+  nhead: 2
+  ff_dim: 512
+  dropout: 0.0

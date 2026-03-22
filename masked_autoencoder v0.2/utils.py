@@ -15,7 +15,7 @@ def save_plots_and_loss_arrays(out_dir, train_loss_list, train_debug_loss_list,
     plt.xlabel('epoch')
     plt.ylabel('loss')
     plt.grid()
-    plt.savefig(os.path.join(out_dir, 'loss.png'))
+    plt.savefig(os.path.join(out_dir, 'loss.png'), dpi=300)
     plt.close()
 
     # lr curve
@@ -24,7 +24,7 @@ def save_plots_and_loss_arrays(out_dir, train_loss_list, train_debug_loss_list,
     plt.xlabel('step')
     plt.ylabel('lr')
     plt.grid()
-    plt.savefig(os.path.join(out_dir, 'lr.png'))
+    plt.savefig(os.path.join(out_dir, 'lr.png'), dpi=300)
     plt.close()
 
     train_loss_list = np.array(train_loss_list)

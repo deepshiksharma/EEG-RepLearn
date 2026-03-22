@@ -3,13 +3,13 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
-from normalization import staged_mu_law
+from models_and_co.normalization import staged_mu_law
 
 
-class TUHEEGHealthy_NPY_Dataset(Dataset):
+class TUHEEGHealthyAge_NPY_Dataset(Dataset):
     """
     Args:
-        - csv_path (str): path to CSV having column 'filepath'
+        - csv_path (str): path to CSV having columns ['filepath', 'age', 'gender']
         - num_channels (int): number of channels
         - T (int): length of a sample
         - dtype (torch.dtype): datatype of torch tensor to return
@@ -20,13 +20,16 @@ class TUHEEGHealthy_NPY_Dataset(Dataset):
 
         self.df = pd.read_csv(csv_path)
 
-        expected = {'filepath'}
+        expected = {'filepath', 'age', 'gender'}
         assert expected.issubset(set(self.df.columns)), f'CSV must contain columns: {expected}'
 
         self.num_channels = num_channels
         self.T = T
         self.dtype = dtype
         self.normalize = normalize
+
+        # gender mapping (only used when supervised=True)
+        self._gender_map = {'male': 0, 'female': 1}
 
     def __len__(self): return len(self.df)
 
@@ -64,5 +67,16 @@ class TUHEEGHealthy_NPY_Dataset(Dataset):
             arr = staged_mu_law(arr, scale=1e4)
         
         tensor = torch.from_numpy(arr).to(dtype=self.dtype)
+        
+        age = row['age']
+        gender = row['gender']
 
-        return tensor
+        if pd.isna(age) or pd.isna(gender):
+            raise ValueError(f'Missing age/gender at index {idx}')
+
+        age_val = torch.tensor(float(age), dtype=torch.float32)
+
+        gender_str = str(gender).strip().lower()
+        gender_val = torch.tensor(self._gender_map[gender_str], dtype=torch.long)
+
+        return tensor, age_val, gender_val
