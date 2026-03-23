@@ -206,5 +206,5 @@ class EEG_MaskedAutoencoder(nn.Module):
 
         decoded_masked = torch.gather(recon, 2, masked_idx_exp.unsqueeze(1).expand(-1, C, -1))
         target_masked = torch.gather(target, 2, masked_idx_exp.unsqueeze(1).expand(-1, C, -1))
-
-        return decoded_masked, target_masked, mask
+        
+        return decoded_masked, target_masked, mask, recon

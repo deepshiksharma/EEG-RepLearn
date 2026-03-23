@@ -8,6 +8,7 @@ data:
 
 training:
   epochs: 10
+  save_recon_every_n_epochs: 10
   output_dir: "0_10-epochs_6-mask"
 
 optimizer:
