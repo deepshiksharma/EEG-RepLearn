@@ -4,12 +4,12 @@ data:
   num_channels: 16
   T: 2000
   batch_size: 2048
-  num_workers: 16
+  num_workers: 8
 
 training:
-  epochs: 10
+  epochs: 100
   save_recon_every_n_epochs: 10
-  output_dir: "0_10-epochs_6-mask"
+  output_dir: "8-mask_100-epochs"
 
 optimizer:
   lr: 1e-4
@@ -21,7 +21,7 @@ scheduler:
   eta_min: 1e-6
 
 model:
-  mask_ratio: 0.6
+  mask_ratio: 0.8
   embed_dim: 128
   transformer_depth: 2
   nhead: 2

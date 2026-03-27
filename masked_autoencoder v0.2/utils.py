@@ -49,12 +49,12 @@ def save_plots_and_loss_arrays(out_dir, train_loss_list, train_debug_loss_list,
     plt.close()
 
     train_loss_list = np.array(train_loss_list)
-    train_debug_loss_list = np.array(train_debug_loss_list)
     val_loss_list = np.array(val_loss_list)
     np.save(os.path.join(out_dir, 'train_loss_list.npy'), train_loss_list)
-    np.save(os.path.join(out_dir, 'train_debug_loss_list.npy'), train_debug_loss_list)
     np.save(os.path.join(out_dir, 'val_loss_list.npy'), val_loss_list)
-
+    if plot_train_debug_loss:
+        train_debug_loss_list = np.array(train_debug_loss_list)
+        np.save(os.path.join(out_dir, 'train_debug_loss_list.npy'), train_debug_loss_list)
 
 
 def save_recon(out_dir, epoch, input_wave, recon_wave, mask_tokens, channel_idx=0):

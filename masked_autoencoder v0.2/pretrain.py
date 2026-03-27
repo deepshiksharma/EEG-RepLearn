@@ -192,8 +192,8 @@ def main():
                     loss = criterion(decoded, target)
 
                 val_loss += loss.item()
-
-                if epoch % save_recon_every_n_epochs == 0 and batch_idx == 0:
+                
+                if ((epoch % save_recon_every_n_epochs == 0) or epoch == 1) and batch_idx == 0:
                     save_recon(out_dir=recon_dir, epoch=epoch,
                                input_wave=waves[0], recon_wave=recon[0], mask_tokens=mask[0], channel_idx=0)
 
@@ -224,4 +224,5 @@ if __name__ == "__main__":
     main()
 
     end_time = time.perf_counter()
-    print(f'\nthis run took {end_time-start_time:.0f} seconds to complete.')
+    time_in_mins = (end_time-start_time)/60
+    print(f'\nthis run took {time_in_mins:.1f} minutes to complete.')
