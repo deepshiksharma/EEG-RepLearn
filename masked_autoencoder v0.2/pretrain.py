@@ -108,9 +108,6 @@ def main():
     criterion = nn.MSELoss()
 
 
-
-    save_recon_every_n_epochs = training_config['save_recon_every_n_epochs']
-
     # output directory
     base_output_dir = "./runs"
     os.makedirs(base_output_dir, exist_ok=True)
@@ -126,12 +123,12 @@ def main():
     # save the configuration file used in this run
     with open(os.path.join(out_dir, 'config.yaml'), 'w') as f:
         yaml.dump(config, f)
+    
 
+    save_recon_every_n_epochs = training_config['save_recon_every_n_epochs']
 
-    lowest_val_loss = float('inf')
     train_losses, val_losses, lr_values = list(), list(), list()
     train_debug_losses = list()
-
 
     # training loop
     epochs = training_config['epochs']
@@ -163,7 +160,6 @@ def main():
         # (to debug the issue where val loss is consistently lower than train loss)
         model.eval()
         train_debug_loss = 0.0
-
         with torch.no_grad():
             pbar = tqdm(train_loader, desc=f'train_debug epoch {epoch}/{epochs}', ncols=100)
             for waves in pbar:
@@ -181,7 +177,6 @@ def main():
         # val
         model.eval()
         val_loss = 0.0
-
         with torch.no_grad():
             pbar = tqdm(val_loader, desc=f'val epoch {epoch}/{epochs}', ncols=100)
             for batch_idx, waves in enumerate(pbar):
@@ -208,11 +203,6 @@ def main():
         # checkpointing
         last_path = os.path.join(weights_dir, f'epoch_{epoch}.pth')
         torch.save(model.state_dict(), last_path)
-
-        if val_loss < lowest_val_loss:
-            lowest_val_loss = val_loss
-            print(f'lowest val loss yet at epoch {epoch}')
-
         save_plots_and_loss_arrays(out_dir, train_losses, train_debug_losses,
                                    val_losses, lr_values, plot_train_debug_loss=True)
 
