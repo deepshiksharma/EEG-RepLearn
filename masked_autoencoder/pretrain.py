@@ -16,7 +16,7 @@ from models_and_co.utils import (set_seed,
 def main():
     # load configuration
     if len(sys.argv) != 2:
-        raise ValueError('Usage: python pretrain.py <yaml_config_path>')
+        raise ValueError('Usage: python pretrain.py <path_to_yaml_config>')
     
     config_path = sys.argv[1]
     with open(config_path, 'r') as f:
