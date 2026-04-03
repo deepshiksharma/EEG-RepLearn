@@ -29,3 +29,17 @@ def staged_mu_law(x, mu=255, scale=1.0):
     x[x > 1] = _x[x > 1]
     x[x < -1] = _x[x < -1]
     return x / scale
+
+
+# PyTorch tensor-native implementation
+import torch
+
+def mu_law_torch(x, mu=255.0):
+    return torch.sign(x) * torch.log1p(mu * torch.abs(x)) / torch.log1p(torch.tensor(mu, device=x.device, dtype=x.dtype))
+
+def staged_mu_law_torch(x, mu=255.0, scale=1e4):
+    x_scaled = x * scale
+    x_mu = mu_law_torch(x_scaled, mu=mu)
+    out = torch.where(x_scaled > 1, x_mu, x_scaled)
+    out = torch.where(x_scaled < -1, x_mu, out)
+    return out / scale

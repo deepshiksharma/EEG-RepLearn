@@ -1,25 +1,25 @@
-import os, time
+import sys, os, time
 os.environ['PYTHONHASHSEED'] = '22'
 import yaml
 from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.multiprocessing as mp
 from torch.utils.data import DataLoader
-from model import EEG_MaskedAutoencoder
-from dataset import TUHEEGHealthy_NPY_Dataset
-from utils import save_plots_and_loss_arrays, set_seed, seed_worker, save_recon
+from models_and_co.model import EEG_MaskedAutoencoder
+from models_and_co.dataset import TUHEEGHealthy_NPZ_Dataset
+from models_and_co.utils import (set_seed,
+    load_shards_from_manifest, shuffle_in_memory,
+    save_plots_and_loss_arrays, save_recon)
 
 
 def main():
-    set_seed(22)
-    train_g, val_g = torch.Generator(), torch.Generator()
-    train_g.manual_seed(22)
-    val_g.manual_seed(22)
-
     # load configuration
-    with open('pretrain.yaml', 'r') as f:
+    if len(sys.argv) != 2:
+        raise ValueError('Usage: python pretrain.py <yaml_config_path>')
+    
+    config_path = sys.argv[1]
+    with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
 
     data_config = config['data']
@@ -29,49 +29,42 @@ def main():
     training_config = config['training']
 
 
+    set_seed(22)
+    train_g = torch.Generator()
+    train_g.manual_seed(22)
+
+
     # device + AMP (BF16)
-    device = torch.device('cuda')
-    use_amp = device.type == 'cuda'
-    amp_dtype = torch.bfloat16
-    print(device, end='\n\n')
+    device = torch.device('cpu')
+    # use_amp = device.type == 'cuda'
+    # amp_dtype = torch.bfloat16
+    print(device)
 
 
-    # datasets
-    train_ds = TUHEEGHealthy_NPY_Dataset(
-        csv_path=data_config['train_csv'],
-        num_channels=data_config['num_channels'],
-        T=data_config['T'],
-        normalize=True
-    )
+    # load and shuffle dataset in memory
+    train_X = load_shards_from_manifest(data_config['train_csv'])
+    val_X = load_shards_from_manifest(data_config['val_csv'])
+    train_X = shuffle_in_memory(train_X)
+    val_X = shuffle_in_memory(val_X)
+    print('dataset loaded in memory\n')
+    
 
-    val_ds = TUHEEGHealthy_NPY_Dataset(
-        csv_path=data_config['val_csv'],
-        num_channels=data_config['num_channels'],
-        T=data_config['T'],
-        normalize=True
-    )
-
-    # dataloaders
+    # datasets and dataloaders
+    train_ds = TUHEEGHealthy_NPZ_Dataset(train_X)
     train_loader = DataLoader(
         train_ds,
         batch_size=data_config['batch_size'],
         shuffle=True,
-        num_workers=data_config['num_workers'],
-        persistent_workers=True,
-        worker_init_fn=seed_worker,
         generator=train_g,
         pin_memory=True,
         drop_last=True
     )
     
+    val_ds = TUHEEGHealthy_NPZ_Dataset(val_X)
     val_loader = DataLoader(
         val_ds,
         batch_size=data_config['batch_size'],
         shuffle=False,
-        num_workers=data_config['num_workers'],
-        persistent_workers=True,
-        worker_init_fn=seed_worker,
-        generator=val_g,
         pin_memory=True
     )
 
@@ -109,7 +102,7 @@ def main():
 
 
     # output directory
-    base_output_dir = "./runs"
+    base_output_dir = './pretrain_runs'
     os.makedirs(base_output_dir, exist_ok=True)
 
     out_dir = os.path.join(base_output_dir, training_config['output_dir'])
@@ -138,15 +131,15 @@ def main():
         model.train()
         train_loss = 0.0
 
-        pbar = tqdm(train_loader, desc=f'train epoch {epoch}/{epochs}', ncols=100)
+        pbar = tqdm(train_loader, desc=f"train epoch {epoch}/{epochs}", ncols=100)
         for waves in pbar:
             waves = waves.to(device, non_blocking=True)
 
             optimizer.zero_grad()
 
-            with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
-                decoded, target, _, _ = model(waves)
-                loss = criterion(decoded, target)
+            # with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
+            decoded, target, _, _ = model(waves)
+            loss = criterion(decoded, target)
 
             loss.backward()
             optimizer.step()
@@ -161,13 +154,13 @@ def main():
         model.eval()
         train_debug_loss = 0.0
         with torch.no_grad():
-            pbar = tqdm(train_loader, desc=f'train_debug epoch {epoch}/{epochs}', ncols=100)
+            pbar = tqdm(train_loader, desc=f"train_debug epoch {epoch}/{epochs}", ncols=100)
             for waves in pbar:
                 waves = waves.to(device, non_blocking=True)
 
-                with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
-                    decoded, target, _, _ = model(waves)
-                    loss = criterion(decoded, target)
+                # with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
+                decoded, target, _, _ = model(waves)
+                loss = criterion(decoded, target)
                 
                 train_debug_loss += loss.item()
 
@@ -178,13 +171,13 @@ def main():
         model.eval()
         val_loss = 0.0
         with torch.no_grad():
-            pbar = tqdm(val_loader, desc=f'val epoch {epoch}/{epochs}', ncols=100)
+            pbar = tqdm(val_loader, desc=f"val epoch {epoch}/{epochs}", ncols=100)
             for batch_idx, waves in enumerate(pbar):
                 waves = waves.to(device, non_blocking=True)
 
-                with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
-                    decoded, target, mask, recon = model(waves)
-                    loss = criterion(decoded, target)
+                # with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
+                decoded, target, mask, recon = model(waves)
+                loss = criterion(decoded, target)
 
                 val_loss += loss.item()
                 
@@ -198,21 +191,20 @@ def main():
         scheduler.step()
         lr_values.append(optimizer.param_groups[0]['lr'])
 
-        print(f'Epoch {epoch}: train={train_loss:.6f} train_debug={train_debug_loss:.6f} val={val_loss:.6f}')
+        print(f"Epoch {epoch}: train={train_loss:.6f} train_debug={train_debug_loss:.6f} val={val_loss:.6f}\n")
 
         # checkpointing
-        last_path = os.path.join(weights_dir, f'epoch_{epoch}.pth')
+        last_path = os.path.join(weights_dir, f"epoch_{epoch}.pth")
         torch.save(model.state_dict(), last_path)
         save_plots_and_loss_arrays(out_dir, train_losses, train_debug_losses,
                                    val_losses, lr_values, plot_train_debug_loss=True)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     start_time = time.perf_counter()
 
-    mp.set_start_method("spawn", force=True)
     main()
 
     end_time = time.perf_counter()
     time_in_mins = (end_time-start_time)/60
-    print(f'\nthis run took {time_in_mins:.1f} minutes to complete.')
+    print(f"this run took {time_in_mins:.1f} minutes to complete")

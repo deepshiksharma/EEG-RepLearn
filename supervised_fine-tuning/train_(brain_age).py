@@ -12,6 +12,12 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 
 def main():
+    set_seed(22)
+    train_g, val_g, test_g = torch.Generator(), torch.Generator(), torch.Generator()
+    train_g.manual_seed(22)
+    val_g.manual_seed(22)
+    test_g.manual_seed(22)
+
     # load configuration
     with open('train_(brain_age).yaml', 'r') as f:
         config = yaml.safe_load(f)

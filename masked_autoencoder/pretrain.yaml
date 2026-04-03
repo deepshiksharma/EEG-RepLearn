@@ -1,15 +1,14 @@
 data:
-  train_csv: "/media/govtech/Disk 1/EEG_representation_learning/TUH-EEG-8S/PT/metadata.csv"
-  val_csv: "/media/govtech/Disk 1/EEG_representation_learning/TUH-EEG-8S/PT_val/metadata.csv"
+  train_csv: ".../pretrain/manifest.csv"
+  val_csv: ".../val/manifest.csv"
   num_channels: 16
   T: 2000
-  batch_size: 2048
-  num_workers: 8
+  batch_size: 512
 
 training:
   epochs: 100
   save_recon_every_n_epochs: 10
-  output_dir: "8-mask_100-epochs"
+  output_dir: "7-mask_100-epochs"
 
 optimizer:
   lr: 1e-4
@@ -21,7 +20,7 @@ scheduler:
   eta_min: 1e-6
 
 model:
-  mask_ratio: 0.8
+  mask_ratio: 0.7
   embed_dim: 128
   transformer_depth: 2
   nhead: 2

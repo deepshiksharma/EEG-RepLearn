@@ -125,8 +125,8 @@ class EEG_MaskedAutoencoder(nn.Module):
         self.num_channels = num_channels
         self.embed_dim = embed_dim
         self.mask_ratio = mask_ratio
-
-        # Encoder
+        
+        # The Encoder
         self.encoder = The_Encoder(
             num_channels=num_channels,
             embed_dim=embed_dim,
@@ -139,7 +139,7 @@ class EEG_MaskedAutoencoder(nn.Module):
         # mask token
         self.mask_token = nn.Parameter(torch.randn(1, 1, embed_dim) * 0.02)
 
-        # Decoder
+        # The Decoder
         # downsampling
         self.up1 = UpsampleBlock(embed_dim, 96)   # 250 -> 500
         self.up2 = UpsampleBlock(96, 64)          # 500 -> 1000
